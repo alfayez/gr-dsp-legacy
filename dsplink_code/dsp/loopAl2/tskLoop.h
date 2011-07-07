@@ -23,10 +23,9 @@
 
 /////////////////////////////////////
 ////////////////////////
-//#define MAX_SIZE	4096
-//#define MAX_SIZE	8192
-#define MAX_SIZE	16384
+#define MAX_SIZE	4096
 #define MAX_DSP_BLOCKS	2
+//#define MAX_SIZE	16394
 #define ARRAY_SIZE	512
 #define ADD_SIZE	10
 //#define DEBUG_ARR_SIZE	5
@@ -38,15 +37,16 @@
 #define DSP_BLOCK_ID_INDEX	1
 #define SCALING_INDEX 		2
 #define INTERPOLATION_INDEX 	3
-#define DECIMATION_INDEX 		4
+#define DECIMATION_INDEX 	4
 #define COEFF_INDEX 		5
 
 enum {
     CCF_INIT    = 0,
     DSP_PROCESS = 1,
-	CCF_FM_DEMOD_DECIM_INIT = 2,
-	CCF_FM_DEMOD_DEEMPH_INIT = 3,
-	CCF_FM_MOD_INIT = 4
+    CCF_FM_DEMOD_DECIM_INIT = 2,
+    CCF_FM_DEMOD_DEEMPH_INIT = 3,
+    CCF_FM_MOD_INIT = 4,
+    FM_MOD_INIT = 5
   };
 
 
@@ -87,7 +87,6 @@ void DSP_fir_cplx_test (
     int nh,                     /* Number of coefficients         */
     int nr                      /* Number of output samples       */
 );
-
 void DSP_fir_cplx_test_interp (
     const short *restrict x,    /* Input array [nr+nh-1 elements] */
     const short *restrict h,    /* Coeff array [nh elements]      */
@@ -95,6 +94,12 @@ void DSP_fir_cplx_test_interp (
     int nh,                     /* Number of coefficients         */
     int nr,                      /* Number of output samples       */
 	short interpolation_factor	
+);
+void DSP_fm_mod (
+    const bufferType *restrict input_buff,    /* Input array [nr+nh-1 elements] */
+    bufferType       *restrict output_buff,   /* Output array [nr elements]      */
+    int input_count,                     /* Number of output samples       */
+	int interpolation_factor			 /* Interpolation factor	     */
 );
 
 //extern bufferType buffLocal[MAX_SIZE];

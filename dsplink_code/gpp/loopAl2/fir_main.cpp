@@ -100,6 +100,35 @@ extern  LINKCFG_Object LINKCFG_config ;
  *  @modif  None
  *  ============================================================================
  */
+ 
+ /*
+***********************************************************************
+Description:
+	This function calls the necessary functions to properly initialize
+	the DSP.  This is the function called by external applications
+	to initialize the DSP.
+***********************************************************************	
+Parameters:
+	std::string dsp_prog_name  = Name of the DSP executable to be
+					loaded
+***********************************************************************	
+Returns:
+	1  -> Success
+***********************************************************************	
+See Also:
+	loop.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+	dsp_init_function("loopAl2.out")
+***********************************************************************	
+*/
+ 
 int dsp_init_function (std::string dsp_prog_name)
 {
     	//Char8 * strProcessorId   = NULL ;

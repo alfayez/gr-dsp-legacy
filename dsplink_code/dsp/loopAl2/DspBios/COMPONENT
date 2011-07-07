@@ -35,17 +35,15 @@ COMP_MAP_FILE   := loop.map
 #   User specified additional command line options for the compiler
 #   ============================================================================
 
-USR_CC_FLAGS    :=
-#USR_CC_FLAGS    += -g
+#USR_CC_FLAGS    :=
 USR_CC_FLAGS    := -O3
 USR_CC_FLAGS    += --consultant
-USR_CC_FLAGS    += -s
+#USR_CC_FLAGS    += -s
 USR_CC_FLAGS    += -mh128
 USR_CC_FLAGS    += --opt_for_space=0
 USR_CC_FLAGS    += -mw
 USR_CC_FLAGS    += -mv6400+
 USR_CC_FLAGS    += --gen_profile_info
-
 
 USR_CC_DEFNS    := -d"TSK_MODE"
 #USR_CC_DEFNS    += -O3
@@ -107,12 +105,12 @@ USR_LIBS        += dsplinkringio.lib
 endif # ifeq ($(TI_DSPLINK_USE_RINGIO), 1)
 
 
-#BASE_CCS_C64X		:= $(BASE_CCS)\c6400
-#BASE_CCS_C64XDSP	:= $(BASE_CCS_C64X)\dsplib
-#BASE_CCS_C64XDSPINC	:= $(BASE_CCS_C64XDSP)\include
-#BASE_CCS_C64XDSPLIB	:= $(BASE_CCS_C64XDSP)\lib
+BASE_CCS_C64X		:= $(BASE_CCS)\c6400
+BASE_CCS_C64XDSP	:= $(BASE_CCS_C64X)\dsplib
+BASE_CCS_C64XDSPINC	:= $(BASE_CCS_C64XDSP)\include
+BASE_CCS_C64XDSPLIB	:= $(BASE_CCS_C64XDSP)\lib
 
-#USR_LIBS        += dsplib64plus.lib
+USR_LIBS        += dsplib64plus.lib
 #   ============================================================================
 #   Target file(s) exported from this module
 #   ============================================================================

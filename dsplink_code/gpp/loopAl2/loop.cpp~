@@ -37,12 +37,18 @@
 #include <string.h>
 #include <math.h>
 
+#include <sys/time.h>
+
 #include "cwt_support_func.h"
 
 typedef short bufferType;
 bufferType fillVar = 0;
 int stepSize=sizeof(bufferType)/sizeof(Char8);
 
+/////////////////////////////
+static timeval start,end;
+static double diff=0;
+/////////////////////////////
 
 #if defined (__cplusplus)
 extern "C" {
@@ -188,15 +194,39 @@ LOOP_VerifyData (IN Char8 * buf, gnuRadioType *gr_inst) ;
 
 
 
-/** ============================================================================
- *  @func   LOOP_Create
- *
- *  @desc   This function allocates and initializes resources used by
- *          this application.
- *
- *  @modif  LOOP_Buffers
- *  ============================================================================
- */
+ /*
+***********************************************************************
+Description:
+	This function calls the DSPLink functions needed to set up the 
+	data channel to transmit data between both processors
+***********************************************************************	
+Parameters:
+	std::string  &dspExecutable = Name of DSP executable
+	bufferType   &strBufferSize = the size of the GPP/DSP channel
+	int          &processorId   = Unique ID of the attaced DSP
+	gnuRadioType *gr_inst       = struct used to pass GNU Radio specific
+				      parameters
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function is called as part of the "LOOP_Main (std::string dsp_prog_name)"
+	function which is the main initialization routine.
+	
+	This function deals only with setting up the data channel buffer
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
+ 
 NORMAL_API
 DSP_STATUS
 LOOP_Create (std::string  &dspExecutable,
@@ -421,14 +451,37 @@ LOOP_Create (std::string  &dspExecutable,
 }
 
 
-/** ============================================================================
- *  @func   LOOP_Execute
- *
- *  @desc   This function implements the execute phase for this application.
- *
- *  @modif  None
- *  ============================================================================
- */
+ /*
+***********************************************************************
+Description:
+	This function calls the DSPLink functions needed to start the
+	execution of the DSP program
+***********************************************************************	
+Parameters:
+
+	int          &processorId   = Unique ID of the attaced DSP
+	gnuRadioType *gr_inst       = struct used to pass GNU Radio specific
+				      parameters
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function is called as part of the "LOOP_Main (std::string dsp_prog_name)"
+	function which is the main initialization routine.
+	
+	This function deals only with starting the DSP execution
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 NORMAL_API
 DSP_STATUS
 LOOP_Execute (Uint8 processorId, gnuRadioType *gr_inst)
@@ -510,19 +563,32 @@ printf("and buff_size = %d\n", gr_inst->buff_size);
 }
 
 
-/** ============================================================================
- *  @func   LOOP_Delete
- *
- *  @desc   This function releases resources allocated earlier by call to
- *          LOOP_Create ().
- *          During cleanup, the allocated resources are being freed
- *          unconditionally. Actual applications may require stricter check
- *          against return values for robustness.
- *
- *  @modif  LOOP_Buffers
- *  ============================================================================
- */
-NORMAL_API
+ /*
+***********************************************************************
+Description:
+	This function calls the DSPLink functions needed to stop DSP
+	execution and deallocate resources called when the DSP was first
+	initialized
+***********************************************************************	
+Parameters:
+
+	int          &processorId   = Unique ID of the attaced DSP
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/NORMAL_API
 Void
 LOOP_Delete (Uint8 processorId)
 {
@@ -597,14 +663,31 @@ LOOP_Delete (Uint8 processorId)
 }
 
 
-/** ============================================================================
- *  @func   LOOP_Main
- *
- *  @desc   Entry point for the application
- *
- *  @modif  None
- *  ============================================================================
- */
+ /*
+***********************************************************************
+Description:
+	This function calls intializes the DSP
+***********************************************************************	
+Parameters:
+
+	std::string dsp_prog_name   = Name of DSP executable
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This is the main DSP initialization routine in the GPP/DSP library
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 NORMAL_API
 Void
 LOOP_Main (std::string dsp_prog_name)
@@ -620,6 +703,7 @@ printf("IN DEBUG MODE !! \n");
     {
     	//#ifdef DEBUG
     	printf("Initializing DSP it's empty :) \n");
+    	
     	//#endif
     	dsp_initialized = 1;
     }
@@ -700,15 +784,35 @@ if (status == DSP_SOK) {
 }
 
 #if defined (VERIFY_DATA)
-/** ----------------------------------------------------------------------------
- *  @func   LOOP_VerifyData
- *
- *  @desc   This function verifies the data-integrity of given buffer.
- *
- *  @modif  None
- *  ----------------------------------------------------------------------------
- */
+ /*
+***********************************************************************
+Description:
+	This function can be used for debugging purposes where data
+	processed on the DSP 
+***********************************************************************	
+Parameters:
 
+	IN Char8 * buf        = The DSP buffer to be verified
+	gnuRadioType *gr_inst = struct used to pass GNU Radio specific
+				parameters.  Can be used to pass the 
+				buffer with the data to be verified.
+ 
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 NORMAL_API
 DSP_STATUS
 LOOP_VerifyData (IN Char8 * buf, gnuRadioType *gr_inst)
@@ -763,7 +867,31 @@ int stall()
 	printf("text = \"%s\"\n", text);
 	return 0;
 }
-
+ /*
+***********************************************************************
+Description:
+	This function is sets up some DSP driver settings
+***********************************************************************	
+Parameters:
+	int          &processorId   = Unique ID of the attaced DSP 
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function is called as part of the "LOOP_Main (std::string dsp_prog_name)"
+	function which is the main initialization routine.
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int initDsp(int &processorId)
 {
     Char8 * strBufferSize    = "5" ;
@@ -803,12 +931,73 @@ int initDsp(int &processorId)
 	printf("ERROR DSP parameter\n");
 	return ERROR_DSP_INIT;
 }
+
+ /*
+***********************************************************************
+Description:
+	This function initializes the struct holding DSP related
+	values
+***********************************************************************	
+Parameters:
+	struct dsp *dsp_instance = DSP instance, makes more sense if
+				   processor used contains multiple
+				   DSP cores
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function is called as part of the "LOOP_Main (std::string dsp_prog_name)"
+	function which is the main initialization routine.
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int initDspParameters(struct dsp *dsp_instance)
 {
 	dsp_instance->dsp_prog_name 	= "";
 	dsp_instance->processorId 	= 0;
 }
+
 //int check_dsp_parameters(struct dsp &dsp_instance)
+ /*
+***********************************************************************
+Description:
+	This function checks the parameters passed to the DSP setup
+***********************************************************************	
+Parameters:
+	gnuRadioType *gr_inst = struct used to pass GNU Radio specific
+				parameters. 
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function is called as part of the "LOOP_Main (std::string dsp_prog_name)"
+	function which is the main initialization routine.
+	
+	This function can be used to ensure ensure that the user is choosing
+	valid parameters for the GPP/DSP interface.  The interface currently
+	has static settings so this would be more helpful once the interface
+	is more dynamic.
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int check_dsp_parameters(gnuRadioType *gnuradio_instance)
 {
 	DSP_STATUS status = DSP_SOK ;
@@ -848,6 +1037,45 @@ int check_dsp_parameters(gnuRadioType *gnuradio_instance)
 	#endif
 	return ERROR_DSP_PARAMETER;
 }
+
+/*
+***********************************************************************
+Description:
+	This function transmits data from the GPP to the DSP in real
+	format with each data point being 16-bit fixed point.
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function implements the actual data transmission while
+	"transmit_data_dsp_fs" is the function that exernal applications
+	would call.
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 DSP_STATUS transmit_data_fs(Uint8 processorId, const float *gpp_local, bufferType &buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &interp, bufferType &decim, bufferType d_ntaps, bufferType &block_id)
 {
 	DSP_STATUS status = DSP_SOK ;
@@ -931,6 +1159,44 @@ DSP_STATUS transmit_data_fs(Uint8 processorId, const float *gpp_local, bufferTyp
 
 
 }
+/*
+***********************************************************************
+Description:
+	This function transmits data from the GPP to the DSP in complex
+	format with each data point being 16-bit fixed point.
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function implements the actual data transmission while
+	"transmit_data_dsp_fs" is the function that exernal applications
+	would call.
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
 DSP_STATUS transmit_data_cs(Uint8 processorId, const gr_complex *gpp_local0, bufferType buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &interp, bufferType &decim, bufferType d_ntaps, bufferType &block_id)
 {
@@ -968,7 +1234,6 @@ DSP_STATUS transmit_data_cs(Uint8 processorId, const gr_complex *gpp_local0, buf
 	printf("block type = %d\n", gpp_dsp_buff[sizeof(bufferType)]);
 	printf("d_ntaps    = %d\n", d_ntaps);
 	#endif
-	
 	if (interp == 1)
 	{
 		temp_interpolation = interp;
@@ -1067,10 +1332,14 @@ DSP_STATUS transmit_data_cs(Uint8 processorId, const gr_complex *gpp_local0, buf
 	}
 	else
 		printf("ERROR: Interpolation must be >= 1\n");
+	
 	/*
          *  Send data to DSP.
          *  Issue 'filled' buffer to the channel.
          */
+        #ifdef DEBUG
+        gettimeofday(&start, NULL);
+        #endif
         status = CHNL_issue (processorId, CHNL_ID_OUTPUT, &LOOP_IOReq) ;
         if (DSP_FAILED (status)) {
             LOOP_1Print ("CHNL_issue failed (output). Status = [0x%x]\n",
@@ -1094,13 +1363,58 @@ DSP_STATUS transmit_data_cs(Uint8 processorId, const gr_complex *gpp_local0, buf
                              status) ;
             }
         }
-
-
+        #ifdef DEBUG
+        gettimeofday(&end, NULL);
+        //diff = difftime(end, start);
+	diff = (end.tv_sec - start.tv_sec) * 1000.0;      // sec to ms
+    	diff += (end.tv_usec - start.tv_usec) / 1000.0; 
+        //diff = ((double)(end - start))/CLOCKS_PER_SEC;
+	printf("GPP->DSP %f mseconds\n", diff);
+	#endif
 	return status;
 
 
 }
 
+/*
+***********************************************************************
+Description:
+	This function transmits data from the GPP to the DSP in real.  This
+	function is currently used to transmit DSP setup parameters this will
+	change later where the function used will be "transmit_data_fs"
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+	This function implements the actual data transmission while
+	"transmit_data_dsp" is the function that exernal applications
+	would call.
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
 DSP_STATUS transmit_data(Uint8 processorId, const bufferTypeFloat *gpp_local, bufferType &buff_size, bufferType &interp, bufferType &decim, bufferType &block_id)
 {
@@ -1109,7 +1423,8 @@ DSP_STATUS transmit_data(Uint8 processorId, const bufferTypeFloat *gpp_local, bu
 	
 	printf("DSPLINK DEBUG gpp_dsp_buff = 0x%x\n", gpp_dsp_buff);
 	memcpy(gpp_dsp_buff, &buff_size, sizeof(bufferType));
-	memcpy(gpp_dsp_buff+sizeof(bufferType), gpp_local, sizeof(bufferType)*buff_size);		
+	memcpy(gpp_dsp_buff+sizeof(bufferType), gpp_local, sizeof(bufferType)*buff_size);
+	
 #ifdef DEBUG
 	printf("write Coeffs to mem location = 0x%x\n", gpp_dsp_buff);
 for (iDebug=0; iDebug<buff_size; iDebug++)		
@@ -1147,7 +1462,36 @@ for (iDebug=0; iDebug<buff_size; iDebug++)
 
 	return status;
 }
-
+/*
+***********************************************************************
+Description:
+	This function receives data from the GPP to the DSP in real
+	format with each data point being 16-bit fixed point.  This
+	function is currently used to receive DSP setup information
+	this will change later when the function used will only be
+	"receive_data_fs".
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 //DSP_STATUS receive_data(Uint8 processorId, bufferTypeFloat *gpp_local, const char *gpp_dsp, bufferType &buff_size)
 DSP_STATUS receive_data(Uint8 processorId, bufferTypeFloat *gpp_local, bufferType &buff_size, bufferType &block_id)
 {
@@ -1196,6 +1540,42 @@ for (iDebug=0; iDebug<buff_size; iDebug++)
 	
 	return status;
 }
+
+/*
+***********************************************************************
+Description:
+	This function receives data from the GPP to the DSP in real
+	format with each data point being 16-bit fixed point. 
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 DSP_STATUS receive_data_fs(Uint8 processorId, float *gpp_local, bufferType &buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &block_id)
 {
 	DSP_STATUS status = DSP_SOK ;
@@ -1283,7 +1663,41 @@ DSP_STATUS receive_data_fs(Uint8 processorId, float *gpp_local, bufferType &buff
 	return status;
 }
 
-
+/*
+***********************************************************************
+Description:
+	This function receives data from the GPP to the DSP in complex
+	format with each data point being 16-bit fixed point. 
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
 DSP_STATUS receive_data_cs(Uint8 processorId, gr_complex *gpp_local0, bufferType buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &block_id)
 {
@@ -1302,6 +1716,7 @@ DSP_STATUS receive_data_cs(Uint8 processorId, gr_complex *gpp_local0, bufferType
          */
         #ifdef DEBUG 
 	printf("Receive Data Back from DSP\n");
+        gettimeofday(&start, NULL);
         #endif
         
         if (DSP_SUCCEEDED (status)) {
@@ -1381,20 +1796,33 @@ DSP_STATUS receive_data_cs(Uint8 processorId, gr_complex *gpp_local0, bufferType
 			#endif
 		}
 			
-		
+		#ifdef DEBUG
+		//if (i < 5)
+		printf("TX GPP <--- DSP ");
+		printf("[%d]  = ", i);
+		printf("%d ", temp_short0);
+		printf("(%f) & ", gpp_local0[i].real());
+		printf("%d ", temp_short1);
+		printf("(%f)\n", gpp_local0[i].imag());
+
+		//printf("TX GPP <--- DSP   [%d]  = %d (%f) & %d (%f)\n", i, temp_short0, gpp_local0[i].real(), temp_short1, gpp_local0[i].imag());
+		#endif
+				
 		//gpp_local1[i] = ((float)temp_short1);
 		//gpp_local1[i] = gpp_local1[i]/scale;
 		k = k + 2;
 		//#ifdef DEBUG
 		//if (i < 5)
 //		for (iDebug=0; iDebug<buff_size; iDebug++)		
-			printf("RX GPP <--- DSP   [%d]  = %f (%d) & %f (%d)\n", i, gpp_local0[i].real(), temp_short0, gpp_local0[i].imag(), temp_short1);
+//			printf("RX GPP <--- DSP   [%d]  = %f (%d) & %f (%d)\n", i, gpp_local0[i].real(), temp_short0, gpp_local0[i].imag(), temp_short1);
 //			printf("(SHF) RX GPP <--- DSP   [%d]  = %f (%x) & %f (%x)\n", i, (float)(temp_short0 >> scale), temp_short0, (float)(temp_short0 >> scale), temp_short1);
 		//#endif	
 
 	}	        
         //memcpy(gr_inst->rfDataOutPtr, (bufferType *) LOOP_IOReq.buffer, gr_inst->buff_size * sizeof(gr_inst->rfDataOutPtr));
 	//memcpy(gpp_local, (bufferType *) LOOP_IOReq.buffer, buff_size * sizeof(bufferType));
+	
+
 	#ifdef DEBUG
 	printf("DONE RECEIVE CS\n");
 	#endif
@@ -1402,14 +1830,16 @@ DSP_STATUS receive_data_cs(Uint8 processorId, gr_complex *gpp_local0, bufferType
 //for (iDebug=0; iDebug<buff_size; iDebug++)		
 //	printf("RX GPP <--- DSP   [%d]  = %d\n", iDebug, gpp_local0[iDebug].real(), gpp_local0[iDebug].imag());
 //#endif	
-	
+	#ifdef DEBUG
+	gettimeofday(&end, NULL);
+        //diff = difftime(end, start);
+	diff = (end.tv_sec - start.tv_sec) * 1000.0;      // sec to ms
+    	diff += (end.tv_usec - start.tv_usec) / 1000.0; 
+        //diff = ((double)(end - start))/CLOCKS_PER_SEC;
+	printf("GPP<-DSP %f mseconds\n", diff);
+	#endif
 	return status;
 }
-
-
-
-
-
 DSP_STATUS verify_data(IN Char8 * buf, gnuRadioType *gr_inst)
 {
 	DSP_STATUS status = DSP_SOK;
@@ -1427,6 +1857,34 @@ DSP_STATUS verify_data(IN Char8 * buf, gnuRadioType *gr_inst)
         
         return status;
 }
+/*
+***********************************************************************
+Description:
+	wrapper function for "transmit_data" function.  This is the
+	function invoked by outside applications.
+***********************************************************************	
+Parameters:
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int transmit_data_dsp(const short *gpp_local, short &buff_size, short &interp, bufferType &decim, bufferType &block_id)
 {
 	DSP_STATUS status = DSP_SOK;
@@ -1438,6 +1896,32 @@ int transmit_data_dsp(const short *gpp_local, short &buff_size, short &interp, b
 	else
 		return ERROR_DSP_TX;
 }
+/*
+***********************************************************************
+Description:
+	This is the wrapper function for the function "receive_data".
+	This is the function called by outside applications.
+***********************************************************************	
+Parameters:
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int receive_data_dsp(short *gpp_local, short &buff_size, bufferType &block_id)
 {
 	DSP_STATUS status = DSP_SOK;
@@ -1448,7 +1932,40 @@ int receive_data_dsp(short *gpp_local, short &buff_size, bufferType &block_id)
 	else
 		return ERROR_DSP_RX;
 }
-
+/*
+***********************************************************************
+Description:
+	It's a wrapper function for "transmit_data_fs"
+***********************************************************************	
+Parameters:
+	Uint8 processorId	= unique DSP ID.
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int transmit_data_dsp_fs(const float *gpp_local, short &buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &interp, bufferType &decim, bufferType d_ntaps, bufferType &block_id)
 {
 	DSP_STATUS status = DSP_SOK;
@@ -1467,6 +1984,36 @@ int transmit_data_dsp_fs(const float *gpp_local, short &buff_size, bufferType &s
 		return ERROR_DSP_TX;
 
 }
+/*
+***********************************************************************
+Description:
+	It's a wrapper function for "receive_data_fs"
+***********************************************************************	
+Parameters:
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
 int receive_data_dsp_fs(float *gpp_local, short &buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &block_id)
 {
@@ -1480,6 +2027,39 @@ int receive_data_dsp_fs(float *gpp_local, short &buff_size, bufferType &scale, b
 		return ERROR_DSP_TX;
 
 }
+/*
+***********************************************************************
+Description:
+	It's a wrapper function for "transmit_data_cs"
+***********************************************************************	
+Parameters:
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &interp	= The interpolation factor to be performed on the DSP
+	bufferType &decim	= the decimation factor to be performed on the DSP
+	bufferType d_ntaps	= the number of taps for the FIR filter
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
 int transmit_data_dsp_cs(const gr_complex *gpp_local0, short buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &interp, bufferType &decim, bufferType d_ntaps, bufferType &block_id)
 {
@@ -1501,7 +2081,36 @@ int transmit_data_dsp_cs(const gr_complex *gpp_local0, short buff_size, bufferTy
 		return ERROR_DSP_TX;
 
 }
-
+/*
+***********************************************************************
+Description:
+	It's a wrapper function for "receive_data_fs"
+***********************************************************************	
+Parameters:
+	const float *gpp_local  = local GPP buffer
+	bufferType &buff_size   = number of data points to be transmitted
+	bufferType &scale       = the scale used for floatin/fixed point conversion (2^scale)
+	bufferType &input_sig   = 0-> input is floating point and needs to be converted
+				  1-> input is fixed point and can be passed as is
+	bufferType &output_sig  = 0-> output should be converted to floating point
+				  1-> output should be kept as fixed point
+	bufferType &block_id	= the unique DSP block ID associated with this transaction
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int receive_data_dsp_cs(gr_complex *gpp_local0, short buff_size, bufferType &scale, bufferType &input_sig, bufferType &output_sig, bufferType &block_id)
 {
 	DSP_STATUS status = DSP_SOK;
@@ -1514,6 +2123,31 @@ int receive_data_dsp_cs(gr_complex *gpp_local0, short buff_size, bufferType &sca
 		return ERROR_DSP_TX;
 
 }
+/*
+***********************************************************************
+Description:
+	This function deallocates the resources used by the GPP/DSP
+	interface when the DSP was originally initialized
+***********************************************************************	
+Parameters:
+	None
+***********************************************************************	
+Returns:
+	1-> if successful
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
+
 bool dsp_clean_function ()
 {
 	if (dsp_initialized)
@@ -1532,7 +2166,30 @@ bool dsp_clean_function ()
 	
 	return 1;
 }
-
+/*
+***********************************************************************
+Description:
+	This function locks a mutex indicating that the GPP/DSP 
+	interface is currently in use
+***********************************************************************	
+Parameters:
+	None
+***********************************************************************	
+Returns:
+	1-> if successful
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 int set_mutex()
 {
 	if (dsp_mutex == 0)
@@ -1543,6 +2200,32 @@ int set_mutex()
 	else
 		return 0;
 }
+
+/*
+***********************************************************************
+Description:
+	This function clears a mutex indicating that the GPP/DSP 
+	interface is currently not in use
+***********************************************************************	
+Parameters:
+	None
+***********************************************************************	
+Returns:
+	1-> if successful
+***********************************************************************	
+See Also:
+	fir_main.cpp
+	loop.h
+	gnuradio_beagleboard_dsp.h
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
+
 int clear_mutex()
 {
 	dsp_mutex = 0;

@@ -30,7 +30,7 @@ utils.importFile("loop.tci");
  *  Set all code and data sections to use DDR2
  *  ============================================================================
  */
-bios.setMemCodeSections(prog, CACHE_L1P) ;
+bios.setMemCodeSections(prog, DDR2) ;
 bios.setMemDataNoHeapSections(prog, DDR2) ;
 bios.setMemDataHeapSections(prog, DDR2) ;
 

@@ -1,3 +1,14 @@
+/*******************************************************************************
+
+WARNING WARNING
+
+The DSP code used is in tskLoop.c the swiLoop is included to provide the 
+skeleton for migrating from a TSK based implementation to a SWI based one
+
+********************************************************************************/
+
+
+
 /** ============================================================================
  *  @file   swiLoop.c
  *

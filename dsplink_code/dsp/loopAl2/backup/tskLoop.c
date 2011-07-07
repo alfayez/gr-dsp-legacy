@@ -44,17 +44,28 @@
 #include <loop_config.h>
 #include <tskLoop.h>
 #include <_hal_cache.h>
+//#include <csl.h>
+//#include <csl_cache.h>
 #include <string.h>
+#include "typedef.h"
+#include "IQmath.h"
+
+
+#define GLOBAL_Q (14)
+
 
 //#include <dsp_fir_cplx.h>
 
-    bufferType rf_data_in0[MAX_SIZE];
-    bufferType rf_data_in1[MAX_SIZE/2];
+    //bufferType rf_data_in0[MAX_SIZE];
+    //bufferType rf_data_in1[MAX_SIZE/2];
     bufferType rf_data_size = 0;    
-    bufferType fir_coeff[MAX_SIZE/2];
-    bufferType fir_coeff_size = 0, scaling_factor = 1, interpolation_factor = 1;
+    bufferType fir_coeff[MAX_DSP_BLOCKS][MAX_SIZE/2];
+    bufferType fir_coeff_size[MAX_DSP_BLOCKS], scaling_factor[MAX_DSP_BLOCKS], interpolation_factor[MAX_DSP_BLOCKS];
+    
     int		first_entry = 0;
     int		stallVar=1, stallCount=0;
+    short	iq_data1_short=0, iq_data2_short=0, iq_result_short=0;
+    _iq		iq_data1, iq_data2, iq_result, iq_scale;
 /** ============================================================================
  *  @const  FILEID
  *
@@ -216,10 +227,11 @@ Int TSKLOOP_create (TSKLOOP_TransferInfo ** infoPtr)
     
     ///////////////////////////////
     // init buffers
-    memset(rf_data_in0, 0, sizeof(rf_data_in0));
-    memset(rf_data_in1, 0, sizeof(rf_data_in1));
-    memset(fir_coeff, 0, sizeof(fir_coeff));
-    
+    memset(fir_coeff,            0, sizeof(fir_coeff));
+    memset(fir_coeff_size,       0, sizeof(fir_coeff_size));
+    memset(scaling_factor,       0, sizeof(scaling_factor));
+    memset(interpolation_factor, 0, sizeof(interpolation_factor));
+
     return status ;
 }
 
@@ -242,7 +254,15 @@ Int TSKLOOP_execute(TSKLOOP_TransferInfo * info)
     Arg         arg     = 0 ;
     Uint32      i=0,k=0, l=0;
     Int         nmadus ;
-	bufferType	temp_zero=0;	
+	bufferType	temp_zero=0;
+	bufferType  fir_interp_div = 0;
+	bufferType  fir_interp_rem = 0;
+	bufferType  block_id = 0;
+	bufferType  block_type = 0;
+	bufferType* iq_temp=NULL;
+	bufferType* coeff_temp=NULL;
+	bufferType* buffer_temp=NULL;
+	
     //bufferType* rf_data_in0_temp = rf_data_in0;
     //bufferType* rf_data_in1_temp = rf_data_in1;
     //Char *      buffer_temp  = info->buffers [0] ;
@@ -260,6 +280,7 @@ Int TSKLOOP_execute(TSKLOOP_TransferInfo * info)
 //         i++) {
 //	while (stallVar)
 //		stallCount++;
+
 while (1) {
         /* Receive a data buffer from GPP */
         status = SIO_issue(info->inputStream,
@@ -284,85 +305,89 @@ while (1) {
         /* Do processing on this buffer */
 	
 	if (status == SYS_OK) {    
+			//block_type = _mem2_const(buffer+sizeof(bufferType)*(DSP_BLOCK_TYPE_INDEX+1));
+            //block_id   = _mem2_const(buffer+sizeof(bufferType)*(DSP_BLOCK_ID_INDEX+1));
+			
+			memcpy(&block_type, buffer+sizeof(bufferType)*(DSP_BLOCK_TYPE_INDEX+1), sizeof(bufferType));
+            memcpy(&block_id, buffer+sizeof(bufferType)*(DSP_BLOCK_ID_INDEX+1), sizeof(bufferType));
+			
+			//memcpy(&block_type,     buffer+sizeof(bufferType)*(DSP_BLOCK_TYPE_INDEX+1),      sizeof(bufferType));
+     	    //memcpy(&block_id,       buffer+sizeof(bufferType)*(DSP_BLOCK_ID_INDEX+1),        sizeof(bufferType));
 
-	     if (first_entry < 1)
+	     if (block_type == CCF_INIT)
 	     {
-	     
-	        memcpy(&scaling_factor, buffer+sizeof(bufferType)*(SCALING_INDEX+1), sizeof(bufferType));
-	     	memcpy(&interpolation_factor, buffer+sizeof(bufferType)*(INTERPOLATION_INDEX+1), sizeof(bufferType));
-	        memcpy(&fir_coeff_size, buffer+sizeof(bufferType)*(COEFF_INDEX+1), sizeof(bufferType));
+		    scaling_factor[block_id]       = _mem2_const(buffer+sizeof(bufferType)*(SCALING_INDEX+1));
+			interpolation_factor[block_id] = _mem2_const(buffer+sizeof(bufferType)*(INTERPOLATION_INDEX+1));
+			fir_coeff_size[block_id]       = _mem2_const(buffer+sizeof(bufferType)*(COEFF_INDEX+1));
+	        //memcpy(&scaling_factor[block_id], buffer+sizeof(bufferType)*(SCALING_INDEX+1),             sizeof(bufferType));
+	     	//memcpy(&interpolation_factor[block_id], buffer+sizeof(bufferType)*(INTERPOLATION_INDEX+1), sizeof(bufferType));
+	        //memcpy(&fir_coeff_size[block_id], buffer+sizeof(bufferType)*(COEFF_INDEX+1),               sizeof(bufferType));
 	     	
-			//memcpy(fir_coeff, buffer+sizeof(bufferType)*(COEFF_INDEX+2), sizeof(bufferType)*fir_coeff_size);
 			// HERE HERE
-			fir_coeff_size = fir_coeff_size*2;
+			fir_coeff_size[block_id] = fir_coeff_size[block_id]*2;
 			k=0;
-			for (i=0; i < fir_coeff_size; i=i+2)
+			for (i=0; i < fir_coeff_size[block_id]; i=i+2)
 			{ 
-			    memcpy(&fir_coeff[i], buffer+sizeof(bufferType)*(COEFF_INDEX+2+k), sizeof(bufferType));
+			    memcpy(&fir_coeff[block_id][i], buffer+sizeof(bufferType)*(COEFF_INDEX+2+k), sizeof(bufferType));
 				//memcpy(fir_coeff, buffer+sizeof(bufferType)*(COEFF_INDEX+2), sizeof(bufferType)*fir_coeff_size);
 				k = k + 1;
 			}
-			fir_coeff_size = fir_coeff_size/2;
-	     	//square(((bufferType *)buffer)+RF_DATA_OFFSET, fir_coeff_size, (bufferType *)buffer);
-	     	first_entry++;
+		
+			if (interpolation_factor[block_id] > 1)
+			{
+				fir_interp_div = fir_coeff_size[block_id] / interpolation_factor[block_id];
+				fir_interp_rem = fir_coeff_size[block_id] % interpolation_factor[block_id];
+				if (fir_interp_rem != 0)
+					fir_coeff_size[block_id] = (fir_interp_div+1) * interpolation_factor[block_id];
+			}
+			
+			fir_coeff_size[block_id] = fir_coeff_size[block_id]/2;
 	     }
 	     else
 	     {
-	     
-		//rf_data_in0_temp = rf_data_in0;
-		//rf_data_in1_temp = rf_data_in1;
-		//buffer_temp      = buffer;
-
-	     	//memcpy(&rf_data_size, buffer, sizeof(bufferType));
-			rf_data_size = _mem2_const(&buffer[0]);
-			//memcpy(rf_data_in0, buffer+sizeof(bufferType)*((fir_coeff_size)*2-1), sizeof(bufferType)*rf_data_size*2);
-	     	//////////////////////////////
-	     	// FIR_FF
-	     	//memcpy(rf_data_in0, buffer+sizeof(bufferType), sizeof(bufferType)*rf_data_size);
-	     	//fir_fff(rf_data_in0, rf_data_size, fir_coeff, fir_coeff_size, (bufferType *)buffer);
+		rf_data_size = _mem2_const(&buffer[0]);
+//		if (interpolation_factor[block_id] > 1)
+//			if (rf_data_size < 1158)
+				k=0;
+		// MANIPULATE ARRAY
+		//HAL_CACHE_WBALL;
+		DSP_fir_cplx_test ((short *)buffer+((fir_coeff_size[block_id]-1)*2)*2, fir_coeff[block_id], (short *)buffer, fir_coeff_size[block_id], rf_data_size);
 		
-		///////////////////////////////////
-		// FIR_CF
-		// input values
 		
-		k=1;
-		l=0;
+		iq_temp     = (bufferType *) buffer;
+		buffer_temp = (bufferType *) buffer;
+		iq_temp	    += (fir_coeff_size[block_id]-1)*2;
 		/*
-		for (i=0; i < rf_data_size/INTERPOLATION; i++)
+		for (i=0; i < (rf_data_size); i=i+1)
 		{
-			//memcpy(rf_data_in0+i*sizeof(bufferType), (bufferType *)buffer+k*sizeof(bufferType), sizeof(bufferType));
-			//memcpy(rf_data_in1+i*sizeof(bufferType), (bufferType *)buffer+(k+1)*sizeof(bufferType), sizeof(bufferType));
-			
-			memcpy(rf_data_in0+l, (bufferType *)buffer+k, sizeof(bufferType));
-			memcpy(rf_data_in1+l, (bufferType *)buffer+(k+1), sizeof(bufferType));			
-			k = k + 2;
-			l = l + 2;
+			iq_data1_short = *(iq_temp);
+			iq_data2_short = *(iq_temp+1);
+			iq_data1 = _IQ(iq_data1_short); 
+			iq_data2 = _IQ(iq_data2_short);
+			iq_scale = _IQ(4096);
+			iq_result = _IQatan2(iq_data1, iq_data2);
+			iq_result = _IQmpy(iq_result, iq_scale);
+			iq_result_short = (short)_IQint(iq_result);
+			memcpy(buffer_temp, &iq_result_short, sizeof(bufferType));
+			iq_temp		+= 2;
+			buffer_temp 	+= 1;
 		}
 		*/
-		//memset(buffer, 0, sizeof(bufferType)*(rf_data_size+1)*2);
-		//HAL_CACHE_WBALL;
-		//fir_ccf(rf_data_in0, rf_data_in1, rf_data_size, fir_coeff, fir_coeff_size, (bufferType *)buffer, (bufferType *)buffer+1);
-		//interp_fir_ccf(rf_data_in0, rf_data_in1, INTERPOLATION, rf_data_size, fir_coeff, fir_coeff_size, (bufferType *)buffer, (bufferType *)buffer+1);
 		
+		for (i=0; i < (rf_data_size); i=i+1)
+		{
+			iq_data1_short = *(iq_temp);
+			iq_data2_short = *(iq_temp+1);
+			iq_data1 = _IQ(iq_data1_short); 
+			iq_data2 = _IQ(iq_data2_short);
+			
+			*buffer_temp = _IQatan2(iq_data1, iq_data2);
+			
+			//memcpy(buffer_temp, &iq_result, sizeof(bufferType));
+			iq_temp		+= 2;
+			buffer_temp 	+= 8;
+		}
 		
-		//interp_fir_ccf((bufferType *)buffer+1, (bufferType *)buffer+2, interpolation_factor, rf_data_size, fir_coeff, fir_coeff_size, (bufferType *)buffer, (bufferType *)buffer+1);
-		//rf_data_in0 = rf_data_in0 + rf_data_size*2;
-		//((fir_coeff_size)*2-1)
-		//DSP_fir_cplx_test ((short *)&rf_data_in0[(fir_coeff_size-1)*2], fir_coeff, (short *)buffer, fir_coeff_size, rf_data_size);
-		DSP_fir_cplx_test ((short *)buffer+((fir_coeff_size-1)*2)*2, fir_coeff, (short *)buffer, fir_coeff_size, rf_data_size);
-///////////////////////////////////////		
-		// send results
-		//k = 0;
-		//memset(buffer, 0, sizeof(bufferType)*(rf_data_size+1)*2);
-		//for (i=0; i < rf_data_size; i++)
-		//{
-		//	memcpy((bufferType *)buffer + (k  )*sizeof(bufferType), rf_data_in0 + i*sizeof(bufferType), sizeof(bufferType));
-		//	memcpy((bufferType *)buffer + (k+1)*sizeof(bufferType), rf_data_in1 + i*sizeof(bufferType), sizeof(bufferType));
-		//	k = k + 2;
-		//}
-		
-	     	//square(((bufferType *)buffer)+RF_DATA_OFFSET, rf_data_size, (bufferType *)buffer);
-	     	//convolution(((bufferType *)buffer)+RF_DATA_OFFSET, rf_data_size, fir_coeff, fir_coeff_size, (bufferType *)buffer);
 	     }
 	     //HAL_CACHE_WBALL;
 	     //HAL_CACHE_WB(buffLocal, sizeof(bufferType)*ARRAY_SIZE);
@@ -470,142 +495,6 @@ bufferType convolution(bufferType* in1, int length1, bufferType* in2, int length
 	return 1;
 
 }
-bufferType square(bufferType* in1, int length1, bufferType* out)
-{
-	int i=0;
-//	#pragma MUST_ITERATE(10,10)
-	for (i=0; i < length1; i++)
-	{
-		//if (i==0)
-		out[i] = (in1[i]*in1[i])/scaling_factor;
-		//out[i] = in1[i];
-		//out[j]=in2[j];
-		//printf("i=%d j=%d i=j=%d\n", i, j, i-j);
-	}
-	
-	return 1;
-
-}
-bufferType fir_fff(bufferType* fir_in, bufferType fir_in_size_local, bufferType* fir_coeff, bufferType fir_coeff_size_local, bufferType* fir_out)
-{
-	bufferType i=0;
-	
-	for(i=0; i < fir_in_size_local; i++)
-	{
-		fir_out[i] = filter_fff_imp(&fir_in[i]);		
-		//fir_out[i] = fir_in[i];
-	}	
-
-	return 1;
-}
-
-bufferType fir_ccf(bufferType* fir_in0, bufferType* fir_in1, bufferType fir_in_size_local, bufferType* fir_coeff, bufferType fir_coeff_size_local, bufferType* fir_out0, bufferType* fir_out1)
-{
-	bufferType i=0;
-	bufferType k=0;
-	
-	for(i=0; i < fir_in_size_local; i++)
-	{
-		fir_out0[k] = filter_ccf_imp(&fir_in0[k]);
-		fir_out1[k] = filter_ccf_imp(&fir_in1[k]);
-		//fir_out0[k] = fir_in0[k]+1;
-		//fir_out1[k] = fir_in1[k]+1;
-		k = k + 2;
-		//fir_out[i] = fir_in[i];
-	}	
-
-	return 1;
-}
-bufferType interp_fir_ccf(bufferType* fir_in0, bufferType* fir_in1, bufferType interpolation, bufferType fir_in_size_local, bufferType* fir_coeff, bufferType fir_coeff_size_local, bufferType* fir_out0, bufferType* fir_out1)
-{
-	bufferType i=0;
-	bufferType k=0;
-	bufferType nfilters = interpolation;
-	bufferType ni = fir_in_size_local / interpolation;
-	bufferType nf = 0;
-	/*
-	for(i=0; i < ni; i++)
-	{
-		for (nf = 0; nf < nfilters; nf++)
-		{
-			fir_out0[k] = filter_ccf_imp(&fir_in0[i]);
-			fir_out1[k] = filter_ccf_imp(&fir_in1[i]);
-			
-			//fir_out0[k] = filter_ccf_imp(&fir_in0[i]);
-			//fir_out1[k] = filter_ccf_imp(&fir_in1[i]);
-			//fir_out0[k] = fir_in0[i]+1;
-			//fir_out1[k] = fir_in1[i]+1;
-			k = k + 2*nfilters;
-			//fir_out[i] = fir_in[i];
-		}
-	}
-	*/
-	
-	for(i=0; i < fir_in_size_local; i++)
-	{
-		//fir_out0[k] = filter_ccf_imp(&fir_in0[i]);
-		//fir_out1[k] = filter_ccf_imp(&fir_in1[i]);
-		
-		fir_out0[k] = filter_ccf_imp(&fir_in0[k]);
-		fir_out1[k] = filter_ccf_imp(&fir_in1[k]);
-		
-		//fir_out0[k] = fir_in0[k];
-		//fir_out1[k] = fir_in1[k];
-		
-		//k = k + 2*nfilters;
-		//k = k + 2*INTERPOLATION;
-		k = k + 2;
-		//fir_out[i] = fir_in[i];
-	}	
-	return 1;
-}
-bufferType filter_ccf_imp(bufferType* fir_in) 
-{
-	static const bufferType N_UNROLL = 2;
-	int	acc0 = 0;
-	int	acc1 = 0;
-    int sum = 0;
-	
-	bufferType i = 0;
-	bufferType k = 0;
-	bufferType n = (fir_coeff_size / N_UNROLL) * N_UNROLL;
-
-	for (i = 0; i < n; i += N_UNROLL){
-		acc0 += ((int)(fir_coeff[i + 0] *  fir_in[k + 0]) >> scaling_factor);
-		//acc1 += (int)(fir_coeff[i + 1] *  fir_in[i + 1]);
-		acc1 += ((int)(fir_coeff[i + 1] *  fir_in[k + 2]) >> scaling_factor);
-		k = k + 2*N_UNROLL;
-	}
-	//k = 0;
-	for (; i < fir_coeff_size; i++)
-	{
-		acc0 += ((int)(fir_coeff[i] *  fir_in[k]) >> scaling_factor);
-		k = k + 2;
-	}
-    sum = (acc0 + acc1);
-  	return ((bufferType)sum);
-}
-
-bufferType filter_fff_imp(bufferType* fir_in) 
-{
-	static const bufferType N_UNROLL = 2;
-	bufferType	acc0 = 0;
-	bufferType	acc1 = 0;
-
-	bufferType i = 0;
-	bufferType n = (fir_coeff_size / N_UNROLL) * N_UNROLL;
-
-	for (i = 0; i < n; i += N_UNROLL){
-		acc0 += (fir_coeff[i + 0] *  fir_in[i + 0]) >> scaling_factor;
-		acc1 += (fir_coeff[i + 1] *  fir_in[i + 1]) >> scaling_factor;
-	}
-
-	for (; i < fir_coeff_size; i++)
-		acc0 += (fir_coeff[i] *  fir_in[i]) >> scaling_factor;
-
-  	return (bufferType) (acc0 + acc1);	
-}
-
 void DSP_fir_cplx_test (
     const short *restrict x,    /* Input array [nr+nh-1 elements] */
     const short *restrict h,    /* Coeff array [nh elements]      */
@@ -637,6 +526,7 @@ void DSP_fir_cplx_test (
     /* Inform the compiler that the following loop will iterate at least  */
     /* once and that the # output samples is a multiple of 4.             */
     /*--------------------------------------------------------------------*/
+    //#pragma MUST_ITERATE(500)
     #pragma MUST_ITERATE(4,,2)
     for (i = 0; i < 2*nr; i += 4) {
         /*----------------------------------------------------------------*/
@@ -685,3 +575,4 @@ void DSP_fir_cplx_test (
         _memd8(&r[i]) = _itod(imag_real_1, imag_real_0);
     }
 }
+

@@ -64,7 +64,8 @@ enum {
     DSP_PROCESS = 1,
     CFF_FM_DEMOD_DECIM_INIT = 2,
     CFF_FM_DEMOD_DEEMPH_INIT = 3,
-    CFF_FM_MOD_INIT = 4
+    CFF_FM_MOD_INIT = 4,
+    FM_MOD_INIT = 5
   };
 
 int dsp_init_function (std::string dsp_prog_name);

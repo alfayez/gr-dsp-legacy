@@ -1,6 +1,6 @@
 ;******************************************************************************
-;* TMS320C6x C/C++ Codegen                                         PC v6.0.21 *
-;* Date/Time created: Mon Nov 15 02:06:33 2010                                *
+;* TMS320C6x C/C++ Codegen                                       Unix v6.0.21 *
+;* Date/Time created: Tue Apr 12 22:18:53 2011                                *
 ;******************************************************************************
 	.compiler_opts --c64p_l1d_workaround=default --disable:=sploop --endian=little --hll_source=on --mem_model:code=far --mem_model:data=far --predefine_memory_model_macros --quiet --silicon_version=6500 --symdebug:dwarf 
 
@@ -29,7 +29,7 @@
 
 $C$DW$CU	.dwtag  DW_TAG_compile_unit
 	.dwattr $C$DW$CU, DW_AT_name("loop_config.c")
-	.dwattr $C$DW$CU, DW_AT_producer("TMS320C6x C/C++ Codegen PC v6.0.21 Copyright (c) 1996-2008 Texas Instruments Incorporated")
+	.dwattr $C$DW$CU, DW_AT_producer("TMS320C6x C/C++ Codegen Unix v6.0.21 Copyright (c) 1996-2008 Texas Instruments Incorporated")
 	.dwattr $C$DW$CU, DW_AT_TI_version(0x01)
 ;*****************************************************************************
 ;* CINIT RECORDS                                                             *
@@ -91,7 +91,7 @@ $C$DW$5	.dwtag  DW_TAG_variable, DW_AT_name("POOL_config")
 	.dwattr $C$DW$5, DW_AT_location[DW_OP_addr _POOL_config]
 	.dwattr $C$DW$5, DW_AT_type(*$C$DW$T$144)
 	.dwattr $C$DW$5, DW_AT_external
-;	C:\ti-tools\C6000\bin\opt6x.exe C:\\DOCUME~1\\jemtest\\LOCALS~1\\Temp\\041123 C:\\DOCUME~1\\jemtest\\LOCALS~1\\Temp\\041125 
+;	/home/alfayez/oe/tmp_beagleboard/staging/x86_64-linux/ti-cgt6x-native/bin/opt6x /tmp/14893Gyk9TV /tmp/14893yY5Zmt 
 ;*****************************************************************************
 ;* UNDEFINED EXTERNAL REFERENCES                                             *
 ;*****************************************************************************

@@ -60,15 +60,18 @@
 #define IQ_FIXED_SCALE	16384
 #define IQ_FIXED_SCALE_TX	16384
 
+#pragma DATA_ALIGN(fir_coeff, 8)
+#pragma DATA_ALIGN(buffer_interp, 8)
+
 //#include <dsp_fir_cplx.h>
 
     //bufferType rf_data_in0[MAX_SIZE];
     //bufferType rf_data_in1[MAX_SIZE/2];
     bufferType rf_data_size = 0;    
     bufferType fir_coeff[MAX_DSP_BLOCKS][MAX_SIZE/2];
-	bufferType filt_hist[MAX_SIZE/2];
 	// Multiply by two because block assumes that the input array is rf_data_size + coeffs - 1
-	bufferType buffer_interp[MAX_SIZE*2];
+	bufferType buffer_interp[MAX_SIZE*10];
+	bufferType* buffer_interp_ptr = buffer_interp;
     bufferType fir_coeff_size[MAX_DSP_BLOCKS], scaling_factor[MAX_DSP_BLOCKS], interpolation_factor[MAX_DSP_BLOCKS], decimation_factor[MAX_DSP_BLOCKS],			   
 block_type_array[MAX_DSP_BLOCKS];
     int     iter_count=0;
@@ -264,22 +267,32 @@ Int TSKLOOP_create (TSKLOOP_TransferInfo ** infoPtr)
     memset(interpolation_factor, 0, sizeof(interpolation_factor));
 	memset(decimation_factor,    0, sizeof(decimation_factor));
 	memset(block_type_array,	 0, sizeof(block_type_array));
-	memset(filt_hist,			 0, sizeof(filt_hist));
     return status ;
 }
 
 
-/** ============================================================================
- *  @func   TSKLOOP_execute
- *
- *  @desc   Execute phase function for the TSKLOOP application. Application
- *          receives the data from the input channel and sends the same data
- *          back on output channel. Channel numbers can be configured through
- *          header file.
- *
- *  @modif  None.
- *  ============================================================================
- */
+/*
+***********************************************************************
+Description:
+	This function contains the main DSP program Loop
+***********************************************************************	
+Parameters:
+	TSKLOOP_TransferInfo * info	Contains the information 
+	neecessary for the Channel Object communicating over the 
+	GPP/DSP interface.
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 Int TSKLOOP_execute(TSKLOOP_TransferInfo * info)
 {
     Int         status  = SYS_OK ;
@@ -295,7 +308,6 @@ Int TSKLOOP_execute(TSKLOOP_TransferInfo * info)
 	bufferType* iq_temp=NULL;
 	bufferType* coeff_temp=NULL;
 	bufferType* buffer_temp=NULL;
-	bufferType* filt_hist_cpy_ptr = NULL;
 
 	bufferType  temp_short0=0;
 	bufferType interpLim=0;
@@ -360,8 +372,16 @@ while (1) {
 			//memcpy(&block_type,     buffer+sizeof(bufferType)*(DSP_BLOCK_TYPE_INDEX+1),      sizeof(bufferType));
      	    //memcpy(&block_id,       buffer+sizeof(bufferType)*(DSP_BLOCK_ID_INDEX+1),        sizeof(bufferType));
 
+	/*********************************************************
+	The message received is going to set up a DSP block
+	**********************************************************/
 	     if (block_type != DSP_PROCESS)
 	     {
+			/*********************************************************
+			Copy the parameters from the message and save locally
+			according to their Block IDs
+			**********************************************************/	     		
+	     		
 		    scaling_factor[block_id]       = _mem2_const(buffer+sizeof(bufferType)*(SCALING_INDEX+1));
 			interpolation_factor[block_id] = _mem2_const(buffer+sizeof(bufferType)*(INTERPOLATION_INDEX+1));
 			decimation_factor[block_id]    = _mem2_const(buffer+sizeof(bufferType)*(DECIMATION_INDEX+1));
@@ -371,12 +391,18 @@ while (1) {
 	     	//memcpy(&interpolation_factor[block_id], buffer+sizeof(bufferType)*(INTERPOLATION_INDEX+1), sizeof(bufferType));
 	        //memcpy(&fir_coeff_size[block_id], buffer+sizeof(bufferType)*(COEFF_INDEX+1),               sizeof(bufferType));
 	     	
-			// HERE HERE
+			/***********************************************************************
+			The filter implementation used assumes the complex FIR filter
+			coefficients to be complex.  Therefore, the program will place
+			zeros for the complex coefficients and only copy the real coefficients
+			to maintain compatibility with the TI DSPLib filter implementation
+			***********************************************************************/
 			fir_coeff_size[block_id] = fir_coeff_size[block_id]*2;
 			k=0;
 			for (i=0; i < fir_coeff_size[block_id]; i=i+2)
 			{ 
 			    memcpy(&fir_coeff[block_id][i], buffer+sizeof(bufferType)*(COEFF_INDEX+2+k), sizeof(bufferType));
+				fir_coeff[block_id][i] = fir_coeff[block_id][i]*interpolation_factor[block_id];
 				//memcpy(fir_coeff, buffer+sizeof(bufferType)*(COEFF_INDEX+2), sizeof(bufferType)*fir_coeff_size);
 				k = k + 1;
 			}
@@ -393,133 +419,72 @@ while (1) {
 	     else
 	     {
 			rf_data_size = _mem2_const(&buffer[0]);
+			memcpy(buffer_interp, buffer, sizeof(buffer_interp[0])*rf_data_size);
 	//		if (interpolation_factor[block_id] > 1)
 	//			if (rf_data_size < 1158)
 					k=0;
 			// MANIPULATE ARRAY
 			//HAL_CACHE_WBALL;
-			// FM Modulation
+
+			
+			/*********************************************************
+			If the message includes an FM modulator
+			**********************************************************/	     		
+			////////////////////////
+			// Begin FM Modulation //
+			////////////////////////
+			
 			if (block_type_array[block_id] == CCF_FM_MOD_INIT)
 			{
-				//iq_temp     = (bufferType *) buffer+((fir_coeff_size[block_id]-1)*2);
-				//iq_temp     = (bufferType *) buffer+((fir_coeff_size[block_id]-1)*2);
 				iq_temp     = (bufferType *) buffer+2;
-				//buffer_temp = (bufferType *) buffer_interp+((fir_coeff_size[block_id]-1)*2);
-				buffer_temp = (bufferType *) buffer_interp+((fir_coeff_size[block_id]/interpolation_factor[block_id])*2*2);
+				//buffer_temp = (bufferType *) buffer_interp_ptr+((fir_coeff_size[block_id]/interpolation_factor[block_id])*2*2);
+				buffer_temp = (bufferType *) buffer_interp_ptr+fir_coeff_size[block_id]*2*2;
 				
-						//_iq14	iq_phase, iq_sensitivity_mod;
-						//_iq14	iq_iout, iq_qout;
-				interpLim  = fir_coeff_size[block_id];
-				filt_hist_cpy_ptr = filt_hist;
-				hist_count=0;
-				hist_count_cpy=0;
-				for (i=0; i < (rf_data_size); i=i+1)
-				{
-					temp_short0 = *iq_temp;
-					//if (temp_short0 != 0)
-					//	temp_short0 = temp_short0;
-					iq_in = _IQtoIQ14(temp_short0); 
-					iq_phase += _IQ14rmpy(iq_sensitivity_mod, iq_in);
-					//iq_phase2 = _IQ14div(iq_phase, _IQ14(IQ_FIXED_SCALE));
-					iq_iout = _IQcos(iq_phase);
-					iq_qout = _IQsin(iq_phase);
-					
-					iq_result  = _IQmpyI32(iq_iout, IQ_FIXED_SCALE_TX);
-					iq_result2 = _IQmpyI32(iq_qout, IQ_FIXED_SCALE_TX);
-					iq_int   = _IQint(iq_result);
-					iq_int_2 = _IQint(iq_result2);
-
-					//iq_int   = _IQint(iq_iout);
-					//iq_int_2 = _IQint(iq_qout);
-					//for (k=0; k < interpolation_factor[block_id]*2; k=k+2)
-					//{
-						memcpy(buffer_temp, 		&iq_int,   sizeof(buffer_temp[0]));
-						memcpy(buffer_temp+1, 	&iq_int_2, sizeof(buffer_temp[0]));
-						// HIST COPY
-						// HERE HERE
-						/*
-						if (hist_count > ( 
-											(rf_data_size*2) -
-											(fir_coeff_size[block_id])/interpolation_factor[block_id])
-										)
-						{
-							memcpy(filt_hist_cpy_ptr, 		&iq_int,   sizeof(filt_hist[0]));
-							memcpy(filt_hist_cpy_ptr+1, 		&iq_int_2, sizeof(filt_hist[0]));
-							filt_hist_cpy_ptr		= filt_hist_cpy_ptr + 2*interpolation_factor[block_id];
-							hist_count_cpy = hist_count_cpy + 2;
-						}
-						hist_count = hist_count + 2;
-						*/
-					//}
-	
-					iq_temp			= iq_temp + 1;
-					//if (i > interpLim)
-					buffer_temp 			= buffer_temp + 2*interpolation_factor[block_id];
-					
-					
-				//	else
-				//		buffer_temp 	= buffer_temp + 2;
-				}
-				// limit d_phase to  [-16*pi , +16*pi]
-				if(_IQ14abs(iq_phase) > fm_phase_limit)
-				{
-					d_phase_limit_temp = _IQ14div(iq_phase, fm_2_phase_limit);
-					iq_phase = iq_phase - _IQ14mpy(d_phase_limit_temp, fm_2_phase_limit);
-				}
-			}
-			if ( (interpolation_factor[block_id] > 1) && (block_type_array[block_id] == CCF_FM_MOD_INIT))
-			{
-				//memset(iq_temp, 0, sizeof(iq_temp));
-				//iq_temp     = (bufferType *) buffer+((fir_coeff_size[block_id]-1)*2);
-				//buffer_temp = (bufferType *) buffer+((fir_coeff_size[block_id]-1)*2)*2;
-				//buffer_temp = (bufferType *) buffer_interp;
-				//for (i=0,k=0; i<rf_data_size; i++, k = k + interpolation_factor[block_id])
-				//{
-				//		memcpy(iq_temp, buffer_temp, sizeof(buffer_temp[0]));
-				//		memcpy(iq_temp+1, buffer_temp+1, sizeof(buffer_temp[0]));
-				//		iq_temp = iq_temp + interpolation_factor[block_id];
-				//		buffer_temp = buffer_temp + 2;
-				//		
-				//}
-				DSP_fir_cplx_test ((short *)buffer_interp+((fir_coeff_size[block_id]-1)*2), 
-									fir_coeff[block_id], 
-									(short *)buffer, 
-									fir_coeff_size[block_id],
-									(rf_data_size)*interpolation_factor[block_id]-(fir_coeff_size[block_id]));
-									//3828);
-									//(rf_data_size)*2*interpolation_factor[block_id]+fir_coeff_size[block_id]*2*interpolation_factor[block_id]);
-				
-				//memcpy(buffer, buffer_interp, sizeof(bufferType)*rf_data_size*2*interpolation_factor[block_id]);
-				buffer_temp = (bufferType *) buffer_interp;
-				//memcpy(buffer_temp, iq_temp, sizeof(bufferType)*(fir_coeff_size[block_id]-1)*2);
-				
-				
-				// HERE HERE HERE
-				// FIXME FIXME
-				// ENABLE for proper history
-				//memcpy(buffer_temp, filt_hist, sizeof(bufferType)*(fir_coeff_size[block_id])*2);
-	//			memcpy(buffer_temp, filt_hist, sizeof(bufferType)*(fir_coeff_size[block_id]/interpolation_factor[block_id])*2*2);
-				
-				
-				//memset(buffer_interp, 0, sizeof(buffer_interp));
-				//for (i=0; i < (fir_coeff_size[block_id]-1)*2; i++)
-				//{
-				//	memcpy(buffer_temp, iq_temp, sizeof(buffer_interp[0]));
-				//	iq_temp++;
-				//	buffer_temp++;
-				//}
-				
-			}
-			else			
-			{
-				DSP_fir_cplx_test ((short *)buffer+((fir_coeff_size[block_id]-1)*2), 
-									fir_coeff[block_id], 
-									(short *)buffer, 
-									fir_coeff_size[block_id], 
-									rf_data_size);
+				DSP_fm_mod (iq_temp, buffer_temp, rf_data_size, interpolation_factor[block_id]);
 			}
 			
-			// FM Demod block with decimation
+			////////////////////////
+			// End FM Modulation  //
+			////////////////////////
+
+			
+			///////////////////////
+			// Begin Channel Filter  //
+			///////////////////////
+			//buffer_temp = (bufferType *) buffer_interp_ptr+((fir_coeff_size[block_id]/interpolation_factor[block_id])*2);
+			// orig
+			/*********************************************************
+			Implement Channel Filter
+			**********************************************************/	     		
+			if (block_type_array[block_id] == CCF_FM_MOD_INIT)
+				buffer_temp = (bufferType *) buffer_interp_ptr+fir_coeff_size[block_id]*2;
+			else
+				buffer_temp = (bufferType *) buffer+fir_coeff_size[block_id]*2;
+			
+			rf_data_size = rf_data_size * interpolation_factor[block_id];
+			//buffer_temp = (bufferType *) buffer_interp_ptr+fir_coeff_size[block_id]*2;
+			
+			DSP_fir_cplx_test ((short *)buffer_temp, 
+								fir_coeff[block_id], 
+								(short *)buffer, 
+								fir_coeff_size[block_id], 
+								rf_data_size*interpolation_factor[block_id]);
+			
+			//if (buffer_interp_ptr == (buffer_interp)
+			/*buffer_temp = (bufferType *) buffer_interp_ptr+ rf_data_size*2;
+			memcpy((short *)buffer_interp_ptr, (short *)buffer_temp, sizeof(short)*fir_coeff_size[block_id]*2*2);
+			*/
+			/*
+			*/
+			/////////////////////
+			// End Channel Filter  //
+			/////////////////////
+			
+			
+			/*********************************************************
+			If FM demodulation is needed.  This block also includes
+			built-in decimation if needed.
+			**********************************************************/	     		
 			if ( (block_type_array[block_id] == CCF_FM_DEMOD_DECIM_INIT)  || 
 				 (block_type_array[block_id] == CCF_FM_DEMOD_DEEMPH_INIT)
 				)
@@ -675,28 +640,32 @@ Int TSKLOOP_delete (TSKLOOP_TransferInfo * info)
 
     return status ;
 }
+/*
+***********************************************************************
+Description:
+	This function is directly from the TI DSPLib freely available
+	library
+***********************************************************************	
+Parameters:
+    const short *restrict x,    /* Input array [nr+nh-1 elements]
+    const short *restrict h,    /* Coeff array [nh elements]     
+    short       *restrict r,    /* Output array [nr elements]    
+    int nh,                     /* Number of coefficients        
+    int nr                      /* Number of output samples      
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
-bufferType convolution(bufferType* in1, int length1, bufferType* in2, int length2, bufferType* out)
-{
-	int i=0,j=0;
-	#pragma MUST_ITERATE(10,10)
-	for (i=0; i < length1+length2-1; i++)
-	{
-		//#pragma MUST_ITERATE(2,2)
-		for (j=0; j<length1; j++)
-		{
-			if (i-j >= 0)
-			{
-				//if (i==0)
-				out[i] = out[i] + in1[j]*in2[i-j];
-				//out[j]=in2[j];
-				//printf("i=%d j=%d i=j=%d\n", i, j, i-j);
-			}
-		}
-	}
-	return 1;
-
-}
 void DSP_fir_cplx_test (
     const short *restrict x,    /* Input array [nr+nh-1 elements] */
     const short *restrict h,    /* Coeff array [nh elements]      */
@@ -777,4 +746,70 @@ void DSP_fir_cplx_test (
         _memd8(&r[i]) = _itod(imag_real_1, imag_real_0);
     }
 }
+/*
+***********************************************************************
+Description:
+	This function is implements an FM modulator
+***********************************************************************	
+Parameters:
+void DSP_fm_mod (
+    const bufferType *restrict input_buff,    	/* Input array [nr+nh-1 elements] 
+    bufferType       *restrict output_buff,   	/* Output array [nr elements]     
+    int input_count,                     	/* Number of output samples       
+	int interpolation_factor		/* Interpolation factor	     
+***********************************************************************	
+Returns:
+	None
+***********************************************************************	
+See Also:
+***********************************************************************	
+Notes:
+***********************************************************************	
+References:
+***********************************************************************	
+Examples:
+***********************************************************************	
+*/
 
+void DSP_fm_mod (
+    const bufferType *restrict input_buff,    /* Input array [nr+nh-1 elements] */
+    bufferType       *restrict output_buff,   /* Output array [nr elements]      */
+    int input_count,                     /* Number of output samples       */
+	int interpolation_factor			 /* Interpolation factor	     */
+) {
+	bufferType* input_buff_local  =NULL;
+	bufferType* output_buff_local =NULL;
+	bufferType output_buff_offset =interpolation_factor*2;
+	int i                         =0;
+	bufferType  temp_short0       =0;
+	
+	input_buff_local     = (bufferType *) input_buff;
+	output_buff_local    = (bufferType *) output_buff;
+
+	for (i=0; i < (input_count); i=i+1)
+	{
+		temp_short0 = *input_buff_local;
+		iq_in = _IQtoIQ14(temp_short0); 
+		iq_phase += _IQ14rmpy(iq_sensitivity_mod, iq_in);
+		iq_iout = _IQcos(iq_phase);
+		iq_qout = _IQsin(iq_phase);
+		
+		iq_result  = _IQmpyI32(iq_iout, IQ_FIXED_SCALE_TX);
+		iq_result2 = _IQmpyI32(iq_qout, IQ_FIXED_SCALE_TX);
+		iq_int   = _IQint(iq_result);
+		iq_int_2 = _IQint(iq_result2);
+
+		memcpy(output_buff_local, 		&iq_int,   sizeof(output_buff_local[0]));
+		memcpy(output_buff_local+1, 	&iq_int_2, sizeof(output_buff_local[0]));
+
+		input_buff_local			= input_buff_local + 1;
+		output_buff_local 			= output_buff_local + output_buff_offset;
+		
+	}
+	// limit d_phase to  [-16*pi , +16*pi]
+	if(_IQ14abs(iq_phase) > fm_phase_limit)
+	{
+		d_phase_limit_temp = _IQ14div(iq_phase, fm_2_phase_limit);
+		iq_phase = iq_phase - _IQ14mpy(d_phase_limit_temp, fm_2_phase_limit);
+	}
+}

@@ -24,6 +24,7 @@
 /////////////////////////////////////
 ////////////////////////
 #define MAX_SIZE	4096
+#define MAX_DSP_BLOCKS	2
 //#define MAX_SIZE	16394
 #define ARRAY_SIZE	512
 #define ADD_SIZE	10
@@ -32,9 +33,22 @@
 #define RF_DATA_OFFSET	1
 //#define INTERPOLATION 1
 
-#define SCALING_INDEX 		    0
-#define INTERPOLATION_INDEX 	1
-#define COEFF_INDEX 		    2
+#define DSP_BLOCK_TYPE_INDEX	0
+#define DSP_BLOCK_ID_INDEX	1
+#define SCALING_INDEX 		2
+#define INTERPOLATION_INDEX 	3
+#define COEFF_INDEX 		4
+
+enum {
+    CCF_INIT    = 0,
+    DSP_PROCESS = 1,
+    CFF_FM_DEMOD_DECIM_INIT = 2,
+    CFF_FM_DEMOD_DEEMPH_INIT = 3,
+    CFF_FM_MOD_INIT = 4,
+    FM_MOD_INIT = 5
+  };
+
+
 typedef short bufferType;
 
 
@@ -64,12 +78,22 @@ bufferType fir_ccf(bufferType* fir_in0, bufferType* fir_in1, bufferType fir_in_s
 
 bufferType interp_fir_ccf(bufferType* fir_in0, bufferType* fir_in1, bufferType interpolation, bufferType fir_in_size_local, bufferType* fir_coeff, bufferType fir_coeff_size_local, bufferType* fir_out0, bufferType* fir_out1);
 
+
 void DSP_fir_cplx_test (
     const short *restrict x,    /* Input array [nr+nh-1 elements] */
     const short *restrict h,    /* Coeff array [nh elements]      */
     short       *restrict r,    /* Output array [nr elements]     */
     int nh,                     /* Number of coefficients         */
     int nr                      /* Number of output samples       */
+);
+
+void DSP_fir_cplx_test_interp (
+    const short *restrict x,    /* Input array [nr+nh-1 elements] */
+    const short *restrict h,    /* Coeff array [nh elements]      */
+    short       *restrict r,    /* Output array [nr elements]     */
+    int nh,                     /* Number of coefficients         */
+    int nr,                      /* Number of output samples       */
+	short interpolation_factor	
 );
 
 //extern bufferType buffLocal[MAX_SIZE];
